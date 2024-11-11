@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { calculateTax } from '../actions/calculateTax'
 import TaxBreakdown from '../components/TaxBreakdown'
 import { TaxResult } from '../types/taxResult'
-import { DatePicker } from '../components/DatePicker'
 
 type FormData = {
   filingStatus: 'single' | 'married_joint' | 'married_separate' | 'head_of_household'
@@ -44,29 +43,49 @@ export default function TaxCalculator() {
     selfEmploymentTax: '',
   })
 
-
   const [taxResult, setTaxResult] = useState<TaxResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [showTaxBreakdown, setShowTaxBreakdown] = useState<boolean>(false)
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value === '' ? '' : Number(value)
+      [name]: value === '' ? '' : parseFloat(value)
     }));
   }
-
 
   const handleSelectChange = (name: string) => (value: string) => {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
+  const handleShowTaxBreakdown = () => {
+    setShowTaxBreakdown(!showTaxBreakdown)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+
+    const sanitizedFormData = {
+      ...formData,
+      income: formData.income === '' ? 0 : formData.income,
+      age: formData.age === '' ? 0 : formData.age,
+      dependents: formData.dependents === '' ? 0 : formData.dependents,
+      retirementContributions: formData.retirementContributions === '' ? 0 : formData.retirementContributions,
+      hsaContributions: formData.hsaContributions === '' ? 0 : formData.hsaContributions,
+      studentLoanInterest: formData.studentLoanInterest === '' ? 0 : formData.studentLoanInterest,
+      earnedIncomeCredit: formData.earnedIncomeCredit === '' ? 0 : formData.earnedIncomeCredit,
+      childTaxCredit: formData.childTaxCredit === '' ? 0 : formData.childTaxCredit,
+      educationCredits: formData.educationCredits === '' ? 0 : formData.educationCredits,
+      selfEmploymentTax: formData.selfEmploymentTax === '' ? 0 : formData.selfEmploymentTax,
+      itemizedDeductions: formData.itemizedDeductions === '' ? 0 : formData.itemizedDeductions,
+    }
+
     try {
-      const result = await calculateTax(formData)
+      const result = await calculateTax(sanitizedFormData)
       setTaxResult(result)
+      setShowTaxBreakdown(true)
     } catch (err) {
       console.error('Error calculating tax:', err)
       setError(err instanceof Error ? err.message : 'An unexpected error occurred')
@@ -106,8 +125,6 @@ export default function TaxCalculator() {
             <div className="flex flex-col gap-3 w-full">
               <Label htmlFor="age">Age</Label>
               <Input type="number" id="age" name="age" value={formData.age} onChange={handleInputChange} placeholder="Enter your age" />
-              {/* <Label htmlFor="age">Date of Birth</Label>
-            <DatePicker/> */}
             </div>
             <div className="flex flex-col gap-3 w-full">
               <Label htmlFor="dependents">Number of Dependents</Label>
@@ -132,7 +149,7 @@ export default function TaxCalculator() {
             </div>
           </div>
 
-          <div className="flex flex-row w-full h-auto items-center  text-center gap-2">
+          <div className="flex flex-row w-full h-auto items-center text-center gap-2">
             <Label>Deduction Type</Label>
             <RadioGroup name="deductionType" value={formData.deductionType} onValueChange={handleSelectChange('deductionType')} className='flex flex-row'>
               <div className="flex items-center gap-2">
@@ -152,7 +169,7 @@ export default function TaxCalculator() {
               <Input type="number" id="itemizedDeductions" name="itemizedDeductions" value={formData.itemizedDeductions} onChange={handleInputChange} placeholder="Enter total itemized deductions" />
             </div>
           )}
-          
+
           <div className='flex flex-row gap-5'>
             <div className="flex flex-col gap-3 w-full">
               <Label htmlFor="earnedIncomeCredit">Earned Income Credit</Label>
@@ -170,7 +187,6 @@ export default function TaxCalculator() {
             </div>
           </div>
 
-
           <div className="space-y-2">
             <Label htmlFor="selfEmploymentTax">Self-Employment Tax</Label>
             <Input type="number" id="selfEmploymentTax" name="selfEmploymentTax" value={formData.selfEmploymentTax} onChange={handleInputChange} placeholder="Enter self-employment tax" />
@@ -185,7 +201,10 @@ export default function TaxCalculator() {
           <span className="font-medium">Error:</span> {error}
         </div>
       )}
-      {taxResult && <TaxBreakdown result={taxResult} />}
+      {taxResult && 
+      <div className='w-full'>
+        <TaxBreakdown result={taxResult} showTaxBreakdown={showTaxBreakdown} onClose={handleShowTaxBreakdown}/>
+      </div>}
     </Card>
   )
 }
